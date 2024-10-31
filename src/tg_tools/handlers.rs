@@ -8,12 +8,15 @@ use chrono;
 
 use crate::parse::parsing::get_all_trains;
 use crate::parse::models::train::Train;
+use crate::tg_tools::models::user::{User, Page};
 
 pub async fn handle_updates(api: &AsyncApi) {
     let client = Client::new();
     let date = chrono::offset::Local::now().date_naive().to_string();
 
     let mut offset: i64 = 0;
+
+    let users_map = Arc::new(Mutex::new(HashMap::new()));
     loop {
         let map = Arc::new(Mutex::new(get_all_trains(&client, date.as_str()).await));
 
@@ -36,6 +39,10 @@ pub async fn handle_updates(api: &AsyncApi) {
 
             match content {
                 UpdateContent::Message(message) => {
+
+                    let mut m_guard = users_map.lock().await;
+                    m_guard.entry(message.chat.id).or_insert(User::new(&message.chat.id, Page::ChooseRoute, date.clone(), None));
+
                     if let Some(ref text) = message.text {
                         if text == "/train" {
                             let api_clone = api.clone();
