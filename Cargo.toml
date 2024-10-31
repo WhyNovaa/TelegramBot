@@ -1,0 +1,13 @@
+[package]
+name = "tgbot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.12.7", features = ["blocking"] }
+frankenstein = { version = "0.34.0", features = ["async-telegram-trait", "async-http-client"] }
+dotenv = "0.15.0"
+tokio = { version = "1", features = ["full"] }
+scraper = "0.20.0"
+serde_json = "1.0.128"
+chrono = "0.4.38"
