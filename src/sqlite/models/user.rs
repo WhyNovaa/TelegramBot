@@ -12,12 +12,12 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(chat_id: &i64, page: Page, date: String, waiting_train_number: Option<String>) {
+    pub fn new(chat_id: &i64, page: Page, date: String, waiting_train_number: Option<String>) -> Self {
         Self{
             chat_id: *chat_id,
             page,
             date,
             waiting_train_number,
-        };
+        }
     }
 }

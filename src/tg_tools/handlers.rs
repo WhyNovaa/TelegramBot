@@ -1,22 +1,27 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
 use frankenstein::{AsyncApi, AsyncTelegramApi, GetUpdatesParams, InlineKeyboardButton, Message, ReplyMarkup, ReplyParameters, SendMessageParams, UpdateContent};
 use frankenstein::objects::InlineKeyboardMarkup;
+
 use reqwest::Client;
 use chrono;
 
 use crate::parse::parsing::get_all_trains;
 use crate::parse::models::train::Train;
-use crate::tg_tools::models::user::{User, Page};
+
+use crate::sqlite::db_tools::create_db;
 
 pub async fn handle_updates(api: &AsyncApi) {
+
+    let conn = create_db().await;
+
     let client = Client::new();
     let date = chrono::offset::Local::now().date_naive().to_string();
 
     let mut offset: i64 = 0;
 
-    let users_map = Arc::new(Mutex::new(HashMap::new()));
     loop {
         let map = Arc::new(Mutex::new(get_all_trains(&client, date.as_str()).await));
 
@@ -40,10 +45,9 @@ pub async fn handle_updates(api: &AsyncApi) {
             match content {
                 UpdateContent::Message(message) => {
 
-                    let mut m_guard = users_map.lock().await;
-                    m_guard.entry(message.chat.id).or_insert(User::new(&message.chat.id, Page::ChooseRoute, date.clone(), None));
 
-                    if let Some(ref text) = message.text {
+                    //m_guard.entry(message.chat.id).or_insert(User::new(&message.chat.id, Page::ChooseRoute, date.clone(), None));
+                    if let Some(text) = message.text {
                         if text == "/train" {
                             let api_clone = api.clone();
                             let chat_id = message.chat.id.clone();
@@ -62,8 +66,12 @@ pub async fn handle_updates(api: &AsyncApi) {
                     offset = (update.update_id + 1) as i64;
                 }
                 UpdateContent::CallbackQuery(callback_query) => {
-                    if let Some(number) = callback_query.message {
+                    if let Some(data) = callback_query.data {
+                        let parts: Vec<&str> = data.split('|').collect();
 
+                        if parts.len() == 2 {
+
+                        }
                     }
                 }
                 _ => {}
@@ -92,7 +100,7 @@ async fn get_button(train: &Train) -> InlineKeyboardButton {
                       train.number.clone(),
                       train.start_station.clone(), train.start_time.clone(),
                       train.end_station.clone(), train.end_time.clone()},
-        callback_data: Some(train.number.clone()),
+        callback_data: Some(format!{"{}|{}","ChooseAction", train.number.clone()}),
         url: None,
         login_url: None,
         web_app: None,
@@ -104,7 +112,7 @@ async fn get_button(train: &Train) -> InlineKeyboardButton {
     }
 }
 
-async fn send_message_with_inline_trains(api: &AsyncApi, chat_id: i64 ,map: Arc<Mutex<HashMap<String, Train>>>) {
+async fn send_message_with_inline_trains(api: &AsyncApi, chat_id: i64, map: Arc<Mutex<HashMap<String, Train>>>) {
     let m_guard = map.lock().await;
     let mut buttons = vec![Vec::new()];
 
