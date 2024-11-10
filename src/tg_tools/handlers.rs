@@ -11,11 +11,14 @@ use chrono;
 use crate::parse::parsing::get_all_trains;
 use crate::parse::models::train::Train;
 
-use crate::sqlite::db_tools::create_db;
+use crate::sqlite::db_tools::{add_user, create_db};
+use crate::sqlite::models::user::{Page, User};
 
 pub async fn handle_updates(api: &AsyncApi) {
 
     let conn = create_db().await;
+
+
 
     let client = Client::new();
     let date = chrono::offset::Local::now().date_naive().to_string();
