@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::process::exit;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -7,16 +8,24 @@ use frankenstein::objects::InlineKeyboardMarkup;
 
 use reqwest::Client;
 use chrono;
-
+use sqlx::SqlitePool;
 use crate::parse::parsing::get_all_trains;
 use crate::parse::models::train::Train;
 
-use crate::sqlite::db_tools::{add_user, create_db};
+use crate::sqlite::db_tools::{add_user, create_db, get_user_chat_id};
 use crate::sqlite::models::user::{Page, User};
 
 pub async fn handle_updates(api: &AsyncApi) {
 
-    let conn = create_db().await;
+    let conn: SqlitePool;
+    match create_db().await {
+        Ok(c) => {conn = c},
+        Err(e) => {
+            eprintln!("{}", e.to_string());
+            exit(1);
+        }
+    }
+
 
 
 
