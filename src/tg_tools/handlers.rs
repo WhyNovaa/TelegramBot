@@ -12,7 +12,7 @@ use sqlx::SqlitePool;
 use crate::parse::parsing::get_all_trains;
 use crate::parse::models::train::Train;
 
-use crate::sqlite::db_tools::{add_user, create_db, get_user_chat_id};
+use crate::sqlite::db_tools::{add_user, create_db, get_all_users, get_user_chat_id};
 use crate::sqlite::models::user::{Page, User};
 
 pub async fn handle_updates(api: &AsyncApi) {
@@ -27,9 +27,11 @@ pub async fn handle_updates(api: &AsyncApi) {
     }
 
 
+    println!("{:?}", get_all_users(&conn).await.unwrap());
 
 
-    let client = Client::new();
+
+    /*let client = Client::new();
     let date = chrono::offset::Local::now().date_naive().to_string();
 
     let mut offset: i64 = 0;
@@ -90,7 +92,7 @@ pub async fn handle_updates(api: &AsyncApi) {
             }
         }
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-    }
+    }*/
 }
 
 async fn process_message(message: Message, api: AsyncApi, text: String) {

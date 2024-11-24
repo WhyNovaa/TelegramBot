@@ -1,7 +1,6 @@
-use sqlx::{Database, FromRow, Sqlite};
-use sqlx::{Decode, Type};
+use sqlx::{Database, FromRow, Row};
 use std::str::FromStr;
-use sqlx::error::BoxDynError;
+use sqlx::sqlite::SqliteRow;
 
 #[derive(Debug)]
 pub enum Page {
@@ -41,11 +40,19 @@ pub struct User {
 
 impl User {
     pub fn new(chat_id: i64, page: Page, date: String, waiting_train_number: Option<String>) -> Self {
-        Self{
+        Self {
             chat_id,
             page,
             date,
             waiting_train_number,
+        }
+    }
+    pub fn from_sqlite_row(row: &SqliteRow) -> Self {
+        Self {
+            chat_id: row.get("chat_id"),
+            page: Page::from_str(row.get("page")).unwrap(),
+            date: row.get("date"),
+            waiting_train_number: row.get("waiting_train_number")
         }
     }
 }
