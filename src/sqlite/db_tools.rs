@@ -1,8 +1,8 @@
-
 use sqlx::{sqlite::SqlitePool, Executor};
-use sqlx::sqlite::SqliteRow;
-use crate::sqlite::models::user::{User, Page};
 use tokio::fs::{metadata, File};
+
+
+use crate::sqlite::models::user::{User, Page};
 
 
 const DATABASE_STRUCT: &str = "CREATE TABLE IF NOT EXISTS Users (
@@ -22,6 +22,7 @@ pub async fn create_path_if_necessary() {
         }
     }
 }
+
 pub async fn create_db() -> Result<SqlitePool, sqlx::Error> {
     create_path_if_necessary().await;
     let pool = SqlitePool::connect("sqlite:./users.db").await
@@ -31,25 +32,24 @@ pub async fn create_db() -> Result<SqlitePool, sqlx::Error> {
         .await?;
 
     Ok(pool)
-
 }
 
-pub async fn add_user(pool: &SqlitePool, user: User) -> Result<bool, sqlx::Error> {
+pub async fn add_user(pool: &SqlitePool, user: &User) -> Result<bool, sqlx::Error> {
     let req = sqlx::query(
         "INSERT INTO Users(chat_id, page, date, waiting_train_number)
             VALUES(?, ?, ?, ?)"
     )
         .bind(user.chat_id)
         .bind(user.page.as_str())
-        .bind(user.date)
-        .bind(user.waiting_train_number)
+        .bind(user.date.clone())
+        .bind(user.waiting_train_number.clone())
         .execute(pool)
         .await?;
 
     Ok(req.rows_affected() == 1)
 }
 
-pub async fn get_user_chat_id(pool: &SqlitePool, chat_id: i64) -> Result<User,sqlx::Error> {
+pub async fn get_user_chat_id(pool: &SqlitePool, chat_id: &i64) -> Result<User,sqlx::Error> {
     let req = sqlx::query("SELECT * FROM Users WHERE chat_id=?")
         .bind(chat_id)
         .fetch_one(pool)
@@ -60,10 +60,10 @@ pub async fn get_user_chat_id(pool: &SqlitePool, chat_id: i64) -> Result<User,sq
     Ok(user)
 }
 
-pub async fn change_user_page(pool: &SqlitePool, user: User) -> Result<bool, sqlx::Error> {
+pub async fn change_user_page(pool: &SqlitePool, chat_id: &i64, page: &Page) -> Result<bool, sqlx::Error> {
     let req = sqlx::query("UPDATE Users SET page=? WHERE chat_id=?")
-        .bind(user.page.as_str())
-        .bind(user.chat_id)
+        .bind(page.as_str())
+        .bind(chat_id)
         .execute(pool)
         .await?;
     Ok(req.rows_affected() == 1)
