@@ -1,8 +1,7 @@
-use std::str::FromStr;
-use sqlx::{sqlite::SqlitePool, Executor, Row};
-use sqlx::sqlite::SqliteError;
-use crate::sqlite::models::user::{User, Page};
 
+use sqlx::{sqlite::SqlitePool, Executor};
+use sqlx::sqlite::SqliteRow;
+use crate::sqlite::models::user::{User, Page};
 use tokio::fs::{metadata, File};
 
 
@@ -36,7 +35,7 @@ pub async fn create_db() -> Result<SqlitePool, sqlx::Error> {
 }
 
 pub async fn add_user(pool: &SqlitePool, user: User) -> Result<bool, sqlx::Error> {
-    sqlx::query(
+    let req = sqlx::query(
         "INSERT INTO Users(chat_id, page, date, waiting_train_number)
             VALUES(?, ?, ?, ?)"
     )
@@ -47,21 +46,36 @@ pub async fn add_user(pool: &SqlitePool, user: User) -> Result<bool, sqlx::Error
         .execute(pool)
         .await?;
 
-    Ok(true)
+    Ok(req.rows_affected() == 1)
 }
 
-pub async fn get_user_chat_id(pool: &SqlitePool, chat_id: &i64) -> Result<User,sqlx::Error> {
+pub async fn get_user_chat_id(pool: &SqlitePool, chat_id: i64) -> Result<User,sqlx::Error> {
     let req = sqlx::query("SELECT * FROM Users WHERE chat_id=?")
         .bind(chat_id)
         .fetch_one(pool)
         .await?;
 
-    let chat_id = req.get("chat_id");
-    let page = Page::from_str(req.get("page")).unwrap();
-    let date = req.get("date");
-    let waiting_train_number = req.get("waiting_train_number");
-
-    let user = User::new(chat_id, page, date, waiting_train_number);
+    let user = User::from_sqlite_row(&req);
 
     Ok(user)
+}
+
+pub async fn change_user_page(pool: &SqlitePool, user: User) -> Result<bool, sqlx::Error> {
+    let req = sqlx::query("UPDATE Users SET page=? WHERE chat_id=?")
+        .bind(user.page.as_str())
+        .bind(user.chat_id)
+        .execute(pool)
+        .await?;
+    Ok(req.rows_affected() == 1)
+}
+
+pub async fn get_all_users(pool: &SqlitePool) -> Result<Vec<User>, sqlx::Error> {
+    let req = sqlx::query("SELECT * FROM Users")
+        .fetch_all(pool)
+        .await?;
+
+    let vec = req.iter()
+        .map(|row| User::from_sqlite_row(row))
+        .collect::<Vec<User>>();
+    Ok(vec)
 }
