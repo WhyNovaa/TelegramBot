@@ -9,7 +9,8 @@ const DATABASE_STRUCT: &str = "CREATE TABLE IF NOT EXISTS Users (
             chat_id INTEGER PRIMARY KEY,
             page TEXT NOT NULL CHECK(PAGE in ('ChooseRoute', 'ChooseTrain', 'Waiting')),
             date TEXT,
-            waiting_train_number TEXT
+            waiting_train_number TEXT,
+            waiting_amount INTEGER,
         )";
 
 
@@ -36,13 +37,14 @@ pub async fn create_db() -> Result<SqlitePool, sqlx::Error> {
 
 pub async fn add_user(pool: &SqlitePool, user: &User) -> Result<bool, sqlx::Error> {
     let req = sqlx::query(
-        "INSERT INTO Users(chat_id, page, date, waiting_train_number)
-            VALUES(?, ?, ?, ?)"
+        "INSERT INTO Users(chat_id, page, date, waiting_train_number, waiting_amount)
+            VALUES(?, ?, ?, ?, ?)"
     )
         .bind(user.chat_id)
         .bind(user.page.as_str())
         .bind(user.date.clone())
-        .bind(user.waiting_train_number.clone())
+        .bind(None::<String>)
+        .bind(None::<String>)
         .execute(pool)
         .await?;
 
@@ -79,3 +81,4 @@ pub async fn get_all_users(pool: &SqlitePool) -> Result<Vec<User>, sqlx::Error> 
         .collect::<Vec<User>>();
     Ok(vec)
 }
+

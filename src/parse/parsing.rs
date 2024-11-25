@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
-
+use tokio::sync::RwLock;
 use crate::parse::models::{train::Train, ticket::Ticket};
 
 async fn select(el: &ElementRef<'_>, str_parse: &str) -> String {
@@ -54,9 +55,9 @@ async fn get_awailable_tickets(el: &ElementRef<'_>) -> String {
 async fn get_ticket_cost(el: &ElementRef<'_>) -> String {
     select(&el, "span.ticket-cost").await
 }
-pub async fn get_all_trains(cl: &Client, date: &str) -> HashMap<String, Train> {
+pub async fn update_map_all_trains(cl: &Client, map: Arc<RwLock<HashMap<String, Train>>>, date: &str) {
     let url = format!("https://pass.rw.by/ru/route/?from=%D0%9C%D0%B8%D0%BD%D1%81%D0%BA-%D0%9F%D0%B0%D1%81%D1%81%D0%B0%D0%B6%D0%B8%D1%80%D1%81%D0%BA%D0%B8%D0%B9&from_exp=2100001&from_esr=140210&to=%D0%9E%D1%80%D1%88%D0%B0-%D0%A6%D0%B5%D0%BD%D1%82%D1%80%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F&to_exp=2100170&to_esr=166403&date={date}&type=1");
-    let mut map = HashMap::new();
+
     let response = cl
         .get(url)
         .send().await
@@ -89,9 +90,9 @@ pub async fn get_all_trains(cl: &Client, date: &str) -> HashMap<String, Train> {
         let end_time = get_end_time(&train_el).await;
 
 
-        println!("{} {}", number, route);
+        /*println!("{} {}", number, route);
         println!("{} - {}", start_station, end_station);
-        println!("{} - {}", start_time, end_time);
+        println!("{} - {}", start_time, end_time);*/
 
 
         let tickets_sel = parse_tickets().await;
@@ -106,7 +107,7 @@ pub async fn get_all_trains(cl: &Client, date: &str) -> HashMap<String, Train> {
             let ticket_seat_type = get_ticket_name(&ticket_el)
                 .await;
 
-            let awailable_seats = get_awailable_tickets(&ticket_el)
+            let available_seats = get_awailable_tickets(&ticket_el)
                 .await
                 .to_owned()
                 .parse::<u8>()
@@ -116,12 +117,14 @@ pub async fn get_all_trains(cl: &Client, date: &str) -> HashMap<String, Train> {
                 .parse::<f32>()
                 .unwrap_or_else(|_| 0.0);
 
-            vec_tickets.push(Ticket::new(ticket_seat_type, awailable_seats, ticket_cost));
+            vec_tickets.push(Ticket::new(ticket_seat_type, available_seats, ticket_cost));
             println!("{:?}", vec_tickets[index]);
         }
+
         let train = Train::new(number.clone(), route, start_station, end_station, start_time, end_time, vec_tickets);
-        map.insert(number.clone(), train);
-        println!("-----------------");
+
+        let mut m_guard = map.write().await;
+        m_guard.insert(number.clone(), train);
+        //println!("-----------------");
     }
-    map
 }
