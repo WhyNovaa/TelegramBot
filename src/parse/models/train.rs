@@ -1,6 +1,6 @@
 use crate::parse::models::ticket::Ticket;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Train {
     pub number: String,
     pub route: String,

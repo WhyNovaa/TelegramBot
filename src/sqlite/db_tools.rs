@@ -10,7 +10,7 @@ const DATABASE_STRUCT: &str = "CREATE TABLE IF NOT EXISTS Users (
             page TEXT NOT NULL CHECK(PAGE in ('ChooseRoute', 'ChooseTrain', 'Waiting')),
             date TEXT,
             waiting_train_number TEXT,
-            waiting_amount INTEGER,
+            waiting_amount INTEGER
         )";
 
 

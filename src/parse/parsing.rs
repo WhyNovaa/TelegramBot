@@ -69,8 +69,8 @@ pub async fn update_map_all_trains(cl: &Client, map: Arc<RwLock<HashMap<String, 
     let binding = Html::parse_document(&response);
     let sel = parse_selector().await;
 
-    let rows_data = binding
-        .select(&sel).next().unwrap();
+    let rows_data = Box::new(binding
+        .select(&sel).next().unwrap());
 
     for train_el in rows_data.child_elements() {
 

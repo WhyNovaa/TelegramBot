@@ -41,13 +41,18 @@ pub async fn handle_updates(api: &AsyncApi) {
         check_trains(api_clone, &conn_clone, trains_clone).await;
     });
 
+
+    // TODO : not working
+    let trains_clone = Arc::clone(&trains);
+    tokio::spawn(async move {
+        loop {
+            update_map_all_trains(&client, Arc::clone(&trains_clone), date.as_str()).await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        }
+    });
+
+
     loop {
-        let trains_clone = Arc::clone(&trains);
-        update_map_all_trains(&client, trains_clone, date.as_str()).await;
-
-        //let m_guard = map.read().await;
-        //println!("{:?}", m_guard.values());
-
         let update_params = GetUpdatesParams::builder()
             .offset(offset)
             .build();
@@ -69,10 +74,10 @@ pub async fn handle_updates(api: &AsyncApi) {
                     offset = (update.update_id + 1) as i64;
                 }
                 UpdateContent::CallbackQuery(callback_query) => {
-                    let a = Arc::clone(&trains);
+                    let trains_clone = Arc::clone(&trains);
                     let api_clone = api.clone();
                     tokio::spawn(async move {
-                        handle_callback_query(api_clone, callback_query, a).await;
+                        handle_callback_query(api_clone, callback_query, trains_clone).await;
                     });
                 }
                 _ => {}
@@ -149,18 +154,21 @@ async fn handle_message(api: AsyncApi, message: Message, trains: Arc<RwLock<Hash
 
 async fn handle_callback_query(api: AsyncApi, callback_query: CallbackQuery, trains: Arc<RwLock<HashMap<String, Train>>>) {
     let data = callback_query.data.unwrap();
-
+    println!("{data}");
 
 }
 
 async fn check_trains(api: AsyncApi, pool: &SqlitePool, trains: Arc<RwLock<HashMap<String, Train>>>) {
     let users = get_all_users(pool).await.expect("Db getting error");
-    let tr_guard = trains.read().await;
     for user in users {
         if let Some(waiting) = user.waiting {
-            if let Some(train) = tr_guard.get(&waiting.train_number) {
-                let mut res = 0_u64;
-                let _ = train.tickets.iter().map(move |t| res += t.amount as u64);
+            let train_opt = {
+                let tr_guard = trains.read().await;
+                tr_guard.get(&waiting.train_number).cloned()
+            };
+
+            if let Some(train) = train_opt {
+                let res: u64 = train.tickets.iter().map(move |t| t.amount as u64).sum();
                 if res > waiting.amount {
                     process_message(user.chat_id, api.clone(), String::from("Появился билет!!")).await;
                 }
